@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+import hashlib
 import httpx
 from fastapi import Body, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,16 +69,19 @@ def handle_upload(file_name: str, content_type: str, payload: bytes) -> UploadRe
     if len(payload) > settings.max_upload_size_bytes:
         raise HTTPException(status_code=400, detail="The uploaded file exceeds the 10 MB size limit.")
 
+    # Source files are saved locally before indexing so the persistent RAG index
+    # has a durable source reference for rebuild/inspection workflows.
+    source_file_id = hashlib.sha256(payload).hexdigest()[:16]
+    safe_name = f"{source_file_id}_{original_name}"
+    source_path = UPLOAD_DIR / safe_name
+    source_path.write_bytes(payload)
+
     try:
-        document_id, chunk_count = rag_store.ingest(original_name, content_type or "", payload)
+        document_id, chunk_count = rag_store.ingest(original_name, content_type or "", payload, str(source_path))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=500, detail="The file could not be processed.") from exc
-
-    # Real local file persistence for uploaded source files; all app/session state remains in memory.
-    safe_name = f"{document_id}_{original_name}"
-    (UPLOAD_DIR / safe_name).write_bytes(payload)
+        raise HTTPException(status_code=500, detail=f"The file could not be processed: {exc}") from exc
 
     return UploadResponse(
         document_id=document_id,
@@ -202,6 +206,7 @@ def config() -> dict[str, Any]:
                 "model_ssl_verification": settings.openai_verify_ssl,
                 "max_upload_size_bytes": settings.max_upload_size_bytes,
                 "supported_upload_extensions": sorted(SUPPORTED_EXTENSIONS),
+                "rag": rag_store.stats(),
             },
         },
         metadata(),
@@ -409,6 +414,25 @@ def rag_retrieval(query: str | None = Query(default=None), top_k: int = Query(de
         return json_envelope(True, "Latest retrieval result returned because no query was supplied.", session.get("latest_retrieval") or empty_retrieval(), metadata())
     retrieval = retrieve_knowledge(query, top_k)
     return json_envelope(True, retrieval["message"], retrieval, metadata())
+
+
+@app.get("/rag/health")
+def rag_health() -> dict[str, Any]:
+    return json_envelope(True, "RAG health returned.", rag_store.health(), metadata())
+
+
+@app.get("/rag/stats")
+def rag_stats() -> dict[str, Any]:
+    return json_envelope(True, "RAG stats returned.", rag_store.stats(), metadata())
+
+
+@app.post("/rag/rebuild")
+def rag_rebuild() -> dict[str, Any]:
+    try:
+        result = rag_store.rebuild()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"RAG rebuild failed: {exc}") from exc
+    return json_envelope(True, "RAG index rebuilt from persisted chunk metadata.", result, metadata())
 
 
 @app.get("/tools")

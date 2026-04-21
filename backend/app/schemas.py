@@ -43,6 +43,16 @@ class RetrievedChunk(BaseModel):
     chunk_id: str
     score: float
     content: str
+    file_type: str | None = None
+    chunk_index: int | None = None
+    dense_score: float | None = None
+    lexical_score: float | None = None
+    fused_score: float | None = None
+    rerank_score: float | None = None
+    ranking_position: int | None = None
+    retrieval_strategy: str | None = None
+    source_metadata: dict | None = None
+    fallback_flags: dict | None = None
 
 
 class RetrieveResponse(BaseModel):

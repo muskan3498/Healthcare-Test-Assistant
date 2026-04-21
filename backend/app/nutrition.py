@@ -452,13 +452,21 @@ def empty_retrieval(query: str = "") -> dict[str, Any]:
 
 def retrieve_knowledge(query: str, top_k: int = 5, session_id: str = DEFAULT_SESSION_ID) -> dict[str, Any]:
     session = get_session(session_id)
-    results = rag_store.retrieve(query, top_k)
+    diagnostics: dict[str, Any] = {}
+    if hasattr(rag_store, "retrieve_with_diagnostics"):
+        retrieved = rag_store.retrieve_with_diagnostics(query, top_k)
+        results = retrieved["results"]
+        diagnostics = retrieved.get("diagnostics", {})
+    else:
+        results = rag_store.retrieve(query, top_k)
     retrieval = {
         "query": query,
         "results": [result.model_dump() for result in results],
         "combined_text": combine_retrieval_results(results) if results else "",
         "message": f"Retrieved {len(results)} relevant chunk(s)." if results else "No relevant retrieved knowledge was found for this query.",
         "retrieved_at": now_iso(),
+        "diagnostics": diagnostics,
+        "retrieval_strategy": diagnostics.get("retrieval_strategy", "hybrid"),
     }
     session["latest_retrieval"] = retrieval
     return retrieval

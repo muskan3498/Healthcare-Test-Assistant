@@ -212,6 +212,9 @@ Example:
 - `GET /rag/retrieval/latest`
 - `GET /rag/retrieval`
 - `GET /rag/retrieval?query=protein+sources`
+- `GET /rag/health`
+- `GET /rag/stats`
+- `POST /rag/rebuild`
 
 Supported upload formats:
 
@@ -233,7 +236,7 @@ Supported upload formats:
 }
 ```
 
-If no documents exist or no matches are found, the backend returns an empty but valid retrieved-knowledge section.
+The RAG subsystem uses local persistent Qdrant storage, the configured GenAI Lab embedding model, lexical scoring, hybrid score fusion, and a lightweight reranking pass. If no documents exist or no matches are found, the backend returns an empty but valid retrieved-knowledge section.
 
 ### Tools
 
@@ -377,7 +380,11 @@ Real:
 - runtime chat mutation
 - prompt assembly
 - document upload
-- RAG chunking and retrieval
+- persistent Qdrant-backed RAG indexing
+- embedding-based dense retrieval
+- lexical retrieval
+- hybrid score fusion
+- lightweight reranking
 - latest retrieval and generation state
 
 Dummy or hardcoded for now:
@@ -396,6 +403,27 @@ Model-backed but environment-configured:
 - `OPENAI_MODEL`
 - `OPENAI_API_KEY`
 - `OPENAI_VERIFY_SSL`
+
+RAG environment/config options:
+
+- `RAG_VECTOR_STORE_PATH`
+- `RAG_COLLECTION_NAME`
+- `RAG_EMBEDDING_MODEL`
+- `RAG_EMBEDDING_DIMENSIONS`
+- `RAG_CANDIDATE_K`
+- `RAG_RERANK_TOP_N`
+- `RAG_ENABLE_HYBRID`
+- `RAG_ENABLE_RERANK`
+- `RAG_DENSE_WEIGHT`
+- `RAG_LEXICAL_WEIGHT`
+- `RAG_INDEXING_BATCH_SIZE`
+- `RAG_ALLOW_LOCAL_EMBEDDING_FALLBACK`
+
+The default embedding model is:
+
+```text
+azure/genailab-maas-text-embedding-3-large
+```
 
 Future-replaceable:
 
