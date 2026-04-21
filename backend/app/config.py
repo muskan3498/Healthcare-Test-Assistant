@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     openai_model: str = "azure_ai/genailab-maas-DeepSeek-V3-0324"
     openai_base_url: str | None = "https://genailab.tcs.in"
     openai_verify_ssl: bool = False
+    openai_timeout_seconds: float = 60.0
     max_upload_size_bytes: int = 10 * 1024 * 1024
     chunk_size: int = 900
     chunk_overlap: int = 150

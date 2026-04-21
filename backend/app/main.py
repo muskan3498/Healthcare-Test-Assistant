@@ -98,20 +98,70 @@ def model_or_local_generate(prompt: str, request: NutritionGenerateRequest, user
 
     model_name = request.model or settings.openai_model
     try:
-        # Model-backed generation is currently wired for the GenAI Lab OpenAI-compatible endpoint.
-        # Local dummy generation remains the default so development does not require network access.
-        http_client = httpx.Client(verify=settings.openai_verify_ssl)
+        response = invoke_model(prompt, model_name, request.temperature)
+        return response.content or "The model returned an empty response.", model_name
+    except Exception as first_exc:
+        compact_prompt = build_compact_model_prompt(user_text, memory, retrieval)
+        try:
+            response = invoke_model(compact_prompt, model_name, request.temperature)
+            return response.content or "The model returned an empty response.", f"{model_name} (compact-retry)"
+        except Exception as retry_exc:  # pragma: no cover
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "message": "Model API call failed.",
+                    "first_error": safe_exception_summary(first_exc),
+                    "retry_error": safe_exception_summary(retry_exc),
+                    "model_base_url": settings.openai_base_url,
+                    "model_name": model_name,
+                    "ssl_verification": settings.openai_verify_ssl,
+                    "timeout_seconds": settings.openai_timeout_seconds,
+                },
+            ) from retry_exc
+
+
+def invoke_model(prompt: str, model_name: str, temperature: float):
+    # Model-backed generation is currently wired for the GenAI Lab OpenAI-compatible endpoint.
+    # Local dummy generation remains the default so development does not require network access.
+    with httpx.Client(verify=settings.openai_verify_ssl, timeout=settings.openai_timeout_seconds) as http_client:
         llm = ChatOpenAI(
             base_url=settings.openai_base_url,
             model=model_name,
             api_key=settings.openai_api_key,
-            temperature=request.temperature,
+            temperature=temperature,
             http_client=http_client,
+            timeout=settings.openai_timeout_seconds,
         )
-        response = llm.invoke(prompt)
-        return response.content or "The model returned an empty response.", model_name
-    except Exception as exc:  # pragma: no cover
-        raise HTTPException(status_code=502, detail=f"Model API call failed: {exc}") from exc
+        return llm.invoke(prompt)
+
+
+def build_compact_model_prompt(user_text: str, memory: dict[str, Any], retrieval: dict[str, Any]) -> str:
+    context = {
+        "allergies": memory.get("allergies", []),
+        "intolerances": memory.get("intolerances", []),
+        "diseases_history": memory.get("diseases_history", []),
+        "specific_conditions": memory.get("specific_conditions", []),
+        "deficiency_history": memory.get("deficiency_history", []),
+        "digestive_issues": memory.get("digestive_issues", []),
+        "food_restrictions": memory.get("food_restrictions", []),
+        "retrieved_knowledge": retrieval.get("combined_text", "")[:2000],
+    }
+    return (
+        f"{NUTRITION_SYSTEM_PROMPT}\n\n"
+        f"User question:\n{user_text}\n\n"
+        f"Relevant user nutrition/health memory:\n{context}\n\n"
+        "Answer warmly and practically. Do not diagnose or prescribe."
+    )
+
+
+def safe_exception_summary(exc: Exception) -> dict[str, Any]:
+    cause = getattr(exc, "__cause__", None)
+    return {
+        "type": type(exc).__name__,
+        "message": str(exc),
+        "cause_type": type(cause).__name__ if cause else None,
+        "cause_message": str(cause) if cause else None,
+    }
 
 
 @app.get("/health")
