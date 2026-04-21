@@ -244,15 +244,35 @@ def chat_message(request: ChatMessageRequest) -> dict[str, Any]:
     retrieval = retrieve_knowledge(request.text, settings.retrieval_limit)
     assembled = assemble_latest_prompt(include_retrieved_knowledge=True)
     memory = get_memory()
-    assistant_text = generate_local_response(request.text, memory, retrieval)
-    assistant_message = add_message("assistant", assistant_text, "local-dummy-generator")
+    generation_request = NutritionGenerateRequest(
+        query=request.text,
+        include_retrieved_knowledge=True,
+        top_k=settings.retrieval_limit,
+        use_model=True,
+    )
+    assistant_text, model_used = model_or_local_generate(
+        assembled["prompt"],
+        generation_request,
+        request.text,
+        memory,
+        retrieval,
+    )
+    assistant_message = add_message("assistant", assistant_text, model_used)
 
     generation = {
         "output_text": assistant_text,
-        "model_used": "local-dummy-generator",
+        "model_used": model_used,
+        "assistant_message": assistant_message,
         "prompt": assembled["prompt"],
         "included_sections": assembled["included_sections"],
+        "sections": assembled["sections"],
         "retrieved_knowledge": retrieval,
+        "debug": {
+            "used_model_api": True,
+            "used_local_dummy_generation": False,
+            "memory_fallback_flags": memory["fallback_flags"],
+            "source_endpoint": "/chat/message",
+        },
     }
     get_session()["latest_generation"] = generation
 

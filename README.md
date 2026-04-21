@@ -1,8 +1,8 @@
 # Nutrition Healthcare Assistant Backend
 
-This project has been refactored from a generic prompt-testing/RAG utility into a local-development backend for a nutrition-focused healthcare chat assistant.
+This project has been refactored from a generic prompt-testing/RAG utility into a local-development nutrition-focused healthcare chat assistant.
 
-The backend exposes structured JSON endpoints that another frontend application can consume. It supports seeded chat history, in-memory runtime chat updates, dynamic nutrition memory derivation, prompt assembly, hardcoded nutrition tools, RAG document upload/retrieval, and local dummy generation for easy testing.
+The backend exposes structured JSON endpoints that another frontend application can consume. The frontend is a chat-first Vite + React + TypeScript + Tailwind app for using those nutrition assistant capabilities without exposing advanced developer details by default.
 
 ## Project Structure
 
@@ -16,7 +16,7 @@ backend/
     schemas.py     Pydantic request/response models
     config.py      Settings, CORS origins, upload paths
 frontend/
-  Existing Vite React frontend from the original app
+  Vite + React + TypeScript + Tailwind chat interface
 ```
 
 ## What The Backend Does
@@ -92,7 +92,7 @@ http://127.0.0.1:8000/health
 
 ## Optional Frontend Setup
 
-The original Vite frontend is still present. If you use it or another app on port `5173`, the backend already allows that origin through CORS.
+The frontend is a Vite + React + TypeScript + Tailwind application. The first screen is the nutrition chat experience; memory, knowledge/RAG, prompts, tools, and debug views are available from the collapsed Advanced panel.
 
 ```bash
 cd frontend
@@ -110,6 +110,20 @@ If the frontend supports a custom backend URL, use:
 
 ```text
 VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Build the frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+Note: if npm fails with `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` in a corporate/local certificate environment, install dependencies with:
+
+```bash
+set npm_config_strict_ssl=false
+npm install
 ```
 
 ## Endpoint Inventory
