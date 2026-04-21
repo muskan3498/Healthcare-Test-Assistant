@@ -51,10 +51,12 @@ Optional model API configuration in `backend/.env`:
 
 ```env
 OPENAI_API_KEY=your_api_key_here
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_BASE_URL=https://genailab.tcs.in
+OPENAI_MODEL=azure_ai/genailab-maas-DeepSeek-V3-0324
+OPENAI_VERIFY_SSL=false
 ```
 
-The backend works without an API key by using local dummy generation. To call the model API, pass `use_model: true` to `POST /generate`.
+The backend uses `langchain-openai` for model-backed generation and is configured for the GenAI Lab OpenAI-compatible endpoint. It still works without an API key by using local dummy generation. To call the model API, pass `use_model: true` to `POST /generate`.
 
 ## Run The Backend
 
@@ -372,6 +374,14 @@ Dummy or hardcoded for now:
 - hardcoded tool catalog
 - local dummy assistant response
 - rule-based memory extraction
+
+Model-backed but environment-configured:
+
+- `langchain-openai` client
+- `OPENAI_BASE_URL`
+- `OPENAI_MODEL`
+- `OPENAI_API_KEY`
+- `OPENAI_VERIFY_SSL`
 
 Future-replaceable:
 

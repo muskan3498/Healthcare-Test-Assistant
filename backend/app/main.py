@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import Any
 
+import httpx
 from fastapi import Body, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 
 from .config import UPLOAD_DIR, settings
 from .nutrition import (
@@ -95,11 +96,20 @@ def model_or_local_generate(prompt: str, request: NutritionGenerateRequest, user
             detail="OPENAI_API_KEY is not configured. Set use_model=false for local dummy generation.",
         )
 
-    client = OpenAI(api_key=settings.openai_api_key)
     model_name = request.model or settings.openai_model
     try:
-        response = client.responses.create(model=model_name, input=prompt, temperature=request.temperature)
-        return response.output_text or "The model returned an empty response.", model_name
+        # Model-backed generation is currently wired for the GenAI Lab OpenAI-compatible endpoint.
+        # Local dummy generation remains the default so development does not require network access.
+        http_client = httpx.Client(verify=settings.openai_verify_ssl)
+        llm = ChatOpenAI(
+            base_url=settings.openai_base_url,
+            model=model_name,
+            api_key=settings.openai_api_key,
+            temperature=request.temperature,
+            http_client=http_client,
+        )
+        response = llm.invoke(prompt)
+        return response.content or "The model returned an empty response.", model_name
     except Exception as exc:  # pragma: no cover
         raise HTTPException(status_code=502, detail=f"Model API call failed: {exc}") from exc
 
@@ -125,6 +135,10 @@ def config() -> dict[str, Any]:
                 "memory_persistence": "in_memory",
                 "uploaded_file_storage": "local_filesystem",
                 "model_generation_default": "local_dummy",
+                "model_provider": "langchain_openai",
+                "model_base_url": settings.openai_base_url,
+                "model_name": settings.openai_model,
+                "model_ssl_verification": settings.openai_verify_ssl,
                 "max_upload_size_bytes": settings.max_upload_size_bytes,
                 "supported_upload_extensions": sorted(SUPPORTED_EXTENSIONS),
             },

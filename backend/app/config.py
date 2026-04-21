@@ -10,7 +10,9 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 
 class Settings(BaseSettings):
     openai_api_key: str | None = None
-    openai_model: str = "gpt-4.1-mini"
+    openai_model: str = "azure_ai/genailab-maas-DeepSeek-V3-0324"
+    openai_base_url: str | None = "https://genailab.tcs.in"
+    openai_verify_ssl: bool = False
     max_upload_size_bytes: int = 10 * 1024 * 1024
     chunk_size: int = 900
     chunk_overlap: int = 150
@@ -18,7 +20,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
