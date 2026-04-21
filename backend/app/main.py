@@ -96,7 +96,7 @@ def model_or_local_generate(prompt: str, request: NutritionGenerateRequest, user
             detail="OPENAI_API_KEY is not configured. Set use_model=false for local dummy generation.",
         )
 
-    model_name = request.model or settings.openai_model
+    model_name = resolve_model_name(request.model)
     try:
         response = invoke_model(prompt, model_name, request.temperature)
         return response.content or "The model returned an empty response.", model_name
@@ -133,6 +133,17 @@ def invoke_model(prompt: str, model_name: str, temperature: float):
             timeout=settings.openai_timeout_seconds,
         )
         return llm.invoke(prompt)
+
+
+def resolve_model_name(requested_model: str | None) -> str:
+    if not requested_model:
+        return settings.openai_model
+    normalized = requested_model.strip()
+    # Swagger/OpenAPI shows "string" as a placeholder. Treat it as unset so
+    # test calls from /docs use the configured GenAI Lab model instead.
+    if not normalized or normalized.lower() in {"string", "model", "optional-model-name"}:
+        return settings.openai_model
+    return normalized
 
 
 def build_compact_model_prompt(user_text: str, memory: dict[str, Any], retrieval: dict[str, Any]) -> str:

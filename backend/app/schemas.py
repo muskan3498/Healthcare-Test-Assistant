@@ -110,6 +110,10 @@ class NutritionGenerateRequest(BaseModel):
     query: str | None = Field(default=None, max_length=8000)
     include_retrieved_knowledge: bool = True
     top_k: int = Field(default=5, ge=1, le=10)
-    use_model: bool = False
-    model: str | None = None
+    use_model: bool = True
+    model: str | None = Field(
+        default=None,
+        description="Optional model override. Leave null to use the configured GenAI Lab model.",
+        examples=["azure_ai/genailab-maas-DeepSeek-V3-0324"],
+    )
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
