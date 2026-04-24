@@ -82,7 +82,11 @@ class EmbeddingService:
         try:
             if not settings.openai_api_key:
                 raise RuntimeError("OPENAI_API_KEY is not configured for remote embeddings.")
-            with httpx.Client(verify=settings.openai_verify_ssl, timeout=settings.openai_timeout_seconds) as http_client:
+            with httpx.Client(
+                verify=settings.openai_verify_ssl,
+                timeout=settings.openai_timeout_seconds,
+                trust_env=False,
+            ) as http_client:
                 client = OpenAI(
                     api_key=settings.openai_api_key,
                     base_url=settings.openai_base_url,

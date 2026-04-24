@@ -127,7 +127,11 @@ def model_or_local_generate(prompt: str, request: NutritionGenerateRequest, user
 def invoke_model(prompt: str, model_name: str, temperature: float):
     # Model-backed generation is currently wired for the GenAI Lab OpenAI-compatible endpoint.
     # Local dummy generation remains the default so development does not require network access.
-    with httpx.Client(verify=settings.openai_verify_ssl, timeout=settings.openai_timeout_seconds) as http_client:
+    with httpx.Client(
+        verify=settings.openai_verify_ssl,
+        timeout=settings.openai_timeout_seconds,
+        trust_env=False,
+    ) as http_client:
         llm = ChatOpenAI(
             base_url=settings.openai_base_url,
             model=model_name,
